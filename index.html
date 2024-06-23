@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Spotify Web Playback SDK</title>
+  <script src="https://sdk.scdn.co/spotify-player.js"></script>
+</head>
+<body>
+  <script>
+    window.onSpotifyWebPlaybackSDKReady = () => {
+      const token = 'your_spotify_access_token'; // You'll need to manage this token dynamically
+      const player = new Spotify.Player({
+        name: 'Spotify Web Player',
+        getOAuthToken: cb => { cb(token); }
+      });
+
+      // Error handling
+      player.addListener('initialization_error', ({ message }) => { console.error(message); });
+      player.addListener('authentication_error', ({ message }) => { console.error(message); });
+      player.addListener('account_error', ({ message }) => { console.error(message); });
+      player.addListener('playback_error', ({ message }) => { console.error(message); });
+
+      // Playback status updates
+      player.addListener('player_state_changed', state => {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playback_state_changed', data: state }));
+      });
+
+      // Ready
+      player.addListener('ready', ({ device_id }) => {
+        console.log('Ready with Device ID', device_id);
+        // Transfer playback to the Web Playback SDK instance
+        fetch(`https://api.spotify.com/v1/me/player`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            device_ids: [device_id],
+            play: false
+          })
+        });
+      });
+
+      // Connect to the player!
+      player.connect();
+
+      window.addEventListener('message', (event) => {
+        const message = JSON.parse(event.data);
+        if (message.type === 'PLAY_SONG') {
+          const { spotifyUri } = message;
+          fetch(`https://api.spotify.com/v1/me/player/play`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              uris: [spotifyUri]
+            })
+          });
+        }
+      });
+    };
+  </script>
+</body>
+</html>
