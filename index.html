@@ -7,7 +7,7 @@
 <body>
   <script>
     window.onSpotifyWebPlaybackSDKReady = () => {
-      const token = 'BQCKnNonTm8jN99Q7o5kiGIvVHV8qNVzP_agz7QMqhHnwMacQLHf9KkEzBRgZ7Mo12MiSk3s6SVqzOqQ9sCnzUGLT0vbyWepZAhP1m-xk9t1PmWT7k8'; // You'll need to manage this token dynamically
+      const token = 'BQAc2LT3z8XMmVcQMadzlFznkTA2O4K-0Dmxq5_oABc7kv6CYsVOcXPpzP9ISkbTOjcSqjHSAUGZCboKjWJYktnZ5-fBwZ_40aCTpDUAomAeB1RibC0'; // Replace this with your actual access token
       const player = new Spotify.Player({
         name: 'Spotify Web Player',
         getOAuthToken: cb => { cb(token); }
@@ -45,19 +45,23 @@
       player.connect();
 
       window.addEventListener('message', (event) => {
-        const message = JSON.parse(event.data);
-        if (message.type === 'PLAY_SONG') {
-          const { spotifyUri } = message;
-          fetch(`https://api.spotify.com/v1/me/player/play`, {
-            method: 'PUT',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              uris: [spotifyUri]
-            })
-          });
+        try {
+          const message = JSON.parse(event.data);
+          if (message.type === 'PLAY_SONG') {
+            const { spotifyUri } = message;
+            fetch(`https://api.spotify.com/v1/me/player/play`, {
+              method: 'PUT',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                uris: [spotifyUri]
+              })
+            });
+          }
+        } catch (error) {
+          console.error('Error parsing message from React Native:', error);
         }
       });
     };
