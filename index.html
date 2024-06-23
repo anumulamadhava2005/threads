@@ -6,21 +6,42 @@
 </head>
 <body>
   <script>
+    let player;
+
     window.onSpotifyWebPlaybackSDKReady = () => {
-      const token = 'BQAc2LT3z8XMmVcQMadzlFznkTA2O4K-0Dmxq5_oABc7kv6CYsVOcXPpzP9ISkbTOjcSqjHSAUGZCboKjWJYktnZ5-fBwZ_40aCTpDUAomAeB1RibC0'; // Replace this with your actual access token
-      const player = new Spotify.Player({
+      window.addEventListener('message', (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          console.log('Received message from React Native:', message);
+
+          if (message.type === 'INIT_PLAYER') {
+            const token = message.token;
+            initPlayer(token);
+          } else if (message.type === 'PLAY_SONG') {
+            const { spotifyUri } = message;
+            playSong(spotifyUri);
+          }
+        } catch (error) {
+          console.error('Error parsing message from React Native:', error);
+        }
+      });
+    };
+
+    const initPlayer = (token) => {
+      player = new Spotify.Player({
         name: 'Spotify Web Player',
         getOAuthToken: cb => { cb(token); }
       });
 
       // Error handling
-      player.addListener('initialization_error', ({ message }) => { console.error(message); });
-      player.addListener('authentication_error', ({ message }) => { console.error(message); });
-      player.addListener('account_error', ({ message }) => { console.error(message); });
-      player.addListener('playback_error', ({ message }) => { console.error(message); });
+      player.addListener('initialization_error', ({ message }) => { console.error('Initialization Error:', message); });
+      player.addListener('authentication_error', ({ message }) => { console.error('Authentication Error:', message); });
+      player.addListener('account_error', ({ message }) => { console.error('Account Error:', message); });
+      player.addListener('playback_error', ({ message }) => { console.error('Playback Error:', message); });
 
       // Playback status updates
       player.addListener('player_state_changed', state => {
+        console.log('Playback State Changed:', state);
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playback_state_changed', data: state }));
       });
 
@@ -43,27 +64,27 @@
 
       // Connect to the player!
       player.connect();
+    };
 
-      window.addEventListener('message', (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          if (message.type === 'PLAY_SONG') {
-            const { spotifyUri } = message;
-            fetch(`https://api.spotify.com/v1/me/player/play`, {
-              method: 'PUT',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                uris: [spotifyUri]
-              })
-            });
+    const playSong = (spotifyUri) => {
+      if (player) {
+        fetch(`https://api.spotify.com/v1/me/player/play`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            uris: [spotifyUri]
+          })
+        }).then(response => {
+          if (!response.ok) {
+            console.error('Error playing song:', response.statusText);
           }
-        } catch (error) {
-          console.error('Error parsing message from React Native:', error);
-        }
-      });
+        });
+      } else {
+        console.error('Player is not initialized');
+      }
     };
   </script>
 </body>
